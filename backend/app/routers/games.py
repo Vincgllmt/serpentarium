@@ -1,7 +1,10 @@
 import asyncio
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
+from ..config import settings
 from ..db import get_connection
 from ..igdb import IgdbError, search_game
 from ..schemas import GameOut, ScanResult
@@ -24,6 +27,20 @@ def get_game(game_id: int):
     if row is None:
         raise HTTPException(status_code=404, detail="Jeu introuvable")
     return dict(row)
+
+
+@router.get("/games/{game_id}/download")
+def download_game(game_id: int):
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Jeu introuvable")
+
+    path = Path(settings.roms_dir).resolve() / row["relpath"]
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Fichier introuvable sur le disque")
+
+    return FileResponse(path, filename=path.name, media_type="application/octet-stream")
 
 
 @router.post("/scan", response_model=ScanResult)

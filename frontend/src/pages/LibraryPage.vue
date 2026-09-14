@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import GameCard from '../components/GameCard.vue'
+import { API_URL } from '../config'
 import type { Game } from '../types/game'
-
-const API_URL = 'http://localhost:8000'
 
 const games = ref<Game[]>([])
 const query = ref('')

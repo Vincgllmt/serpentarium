@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { API_URL } from '../config'
 import type { Emulator } from '../types/emulator'
 import { formatBytes } from '../utils/format'
-
-const API_URL = 'http://localhost:8000'
 
 const emulators = ref<Emulator[]>([])
 const loading = ref(false)
