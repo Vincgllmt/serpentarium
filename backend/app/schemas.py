@@ -10,6 +10,7 @@ class GameOut(BaseModel):
     crc32: str | None
     cover_url: str | None
     year: int | None
+    source: str | None
 
 
 class ScanResult(BaseModel):
@@ -17,3 +18,9 @@ class ScanResult(BaseModel):
     updated: int
     skipped: int
     total: int
+
+
+class EmulatorOut(BaseModel):
+    name: str
+    file_count: int
+    size: int

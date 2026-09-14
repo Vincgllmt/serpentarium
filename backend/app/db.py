@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS games (
     crc32 TEXT,
     cover_url TEXT,
     year INTEGER,
-    ss_id TEXT,
+    external_id TEXT,
+    source TEXT,
     scraped_at TEXT
 );
 """

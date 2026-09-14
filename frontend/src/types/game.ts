@@ -7,4 +7,5 @@ export interface Game {
   crc32: string | null
   cover_url: string | null
   year: number | null
+  source: string | null
 }

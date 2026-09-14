@@ -1,9 +1,11 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 
 from ..db import get_connection
+from ..igdb import IgdbError, search_game
 from ..schemas import GameOut, ScanResult
 from ..scanner import scan_roms
-from ..screenscraper import ScreenScraperError, fetch_game_info, resolve_systeme_id
 
 router = APIRouter(prefix="/api")
 
@@ -41,27 +43,36 @@ async def enrich_game(game_id: int):
         game = dict(row)
 
         try:
-            systeme_id = await resolve_systeme_id(game["platform"])
-            info = await fetch_game_info(
-                crc32=game["crc32"],
-                systeme_id=systeme_id,
-                rom_name=game["filename"],
-                rom_size=game["size"],
-            )
-        except ScreenScraperError as exc:
+            info = await search_game(game["title"])
+        except IgdbError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         if info is None:
-            raise HTTPException(status_code=404, detail="Jeu non trouve sur ScreenScraper")
+            raise HTTPException(status_code=404, detail="Jeu non trouve sur IGDB")
 
         conn.execute(
             """
             UPDATE games
-            SET title = COALESCE(?, title), cover_url = ?, ss_id = ?
+            SET title = COALESCE(?, title), cover_url = ?, year = ?, external_id = ?, source = 'igdb'
             WHERE id = ?
             """,
-            (info["title"], info["cover_url"], info["ss_id"], game_id),
+            (info["title"], info["cover_url"], info["year"], info["external_id"], game_id),
         )
         updated = conn.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
 
     return dict(updated)
+
+
+@router.post("/enrich-all", response_model=list[GameOut])
+async def enrich_all_games():
+    with get_connection() as conn:
+        ids = [row["id"] for row in conn.execute("SELECT id FROM games").fetchall()]
+
+    results = []
+    for game_id in ids:
+        try:
+            results.append(await enrich_game(game_id))
+        except HTTPException:
+            continue
+        await asyncio.sleep(0.3)  # reste sous la limite de rate-limit IGDB (~4 req/s)
+    return results

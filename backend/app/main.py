@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import init_db
+from .routers.emulators import router as emulators_router
 from .routers.games import router as games_router
 
 app = FastAPI(title="Serpentarium API")
@@ -20,6 +21,7 @@ def on_startup():
 
 
 app.include_router(games_router)
+app.include_router(emulators_router)
 
 
 @app.get("/health")

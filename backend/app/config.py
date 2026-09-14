@@ -14,9 +14,16 @@ class Settings(BaseSettings):
     ss_ssid: str = ""
     ss_sspassword: str = ""
 
+    igdb_client_id: str = ""
+    igdb_client_secret: str = ""
+
     @property
     def screenscraper_configured(self) -> bool:
         return bool(self.ss_devid and self.ss_devpassword and self.ss_ssid and self.ss_sspassword)
+
+    @property
+    def igdb_configured(self) -> bool:
+        return bool(self.igdb_client_id and self.igdb_client_secret)
 
 
 settings = Settings()
