@@ -5,6 +5,9 @@ import type { Game } from '../types/game'
 const { game } = defineProps<{ game: Game }>()
 
 const downloadUrl = `${API_URL}/api/games/${game.id}/download`
+// cover_url est soit une jaquette mise en cache localement (chemin relatif
+// /covers/...), soit (ancien scrape) une URL distante absolue.
+const coverUrl = game.cover_url?.startsWith('/') ? `${API_URL}${game.cover_url}` : game.cover_url
 </script>
 
 <template>
@@ -13,8 +16,8 @@ const downloadUrl = `${API_URL}/api/games/${game.id}/download`
     class="group relative block aspect-[3/4] overflow-hidden rounded-xl bg-zinc-800 shadow-lg shadow-black/30 transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50"
   >
     <img
-      v-if="game.cover_url"
-      :src="game.cover_url"
+      v-if="coverUrl"
+      :src="coverUrl"
       :alt="game.title"
       class="h-full w-full object-cover"
       loading="lazy"

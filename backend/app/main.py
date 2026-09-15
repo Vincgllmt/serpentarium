@@ -1,6 +1,10 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
+from .config import settings
 from .db import init_db
 from .mdns import start_mdns, stop_mdns
 from .routers.emulators import router as emulators_router
@@ -26,6 +30,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_startup():
     init_db()
+    Path(settings.covers_dir).mkdir(parents=True, exist_ok=True)
     await start_mdns()
 
 
@@ -36,6 +41,9 @@ async def on_shutdown():
 
 app.include_router(games_router)
 app.include_router(emulators_router)
+
+Path(settings.covers_dir).mkdir(parents=True, exist_ok=True)
+app.mount("/covers", StaticFiles(directory=settings.covers_dir), name="covers")
 
 
 @app.get("/health")

@@ -6,6 +6,7 @@ import type { Game } from '../types/game'
 
 const games = ref<Game[]>([])
 const query = ref('')
+const selectedPlatform = ref('')
 const loading = ref(false)
 const scanning = ref(false)
 const enriching = ref(false)
@@ -55,8 +56,14 @@ async function triggerEnrich() {
 
 onMounted(loadGames)
 
+const platforms = computed(() =>
+  [...new Set(games.value.map((game) => game.platform))].sort((a, b) => a.localeCompare(b)),
+)
+
 const filteredGames = computed(() =>
-  games.value.filter((game) => game.title.toLowerCase().includes(query.value.toLowerCase())),
+  games.value
+    .filter((game) => game.title.toLowerCase().includes(query.value.toLowerCase()))
+    .filter((game) => !selectedPlatform.value || game.platform === selectedPlatform.value),
 )
 </script>
 
@@ -69,6 +76,13 @@ const filteredGames = computed(() =>
         placeholder="Rechercher un jeu..."
         class="w-full max-w-xs rounded-lg bg-white/5 px-4 py-2 text-sm outline-none ring-1 ring-white/10 placeholder:text-zinc-500 focus:ring-indigo-500"
       />
+      <select
+        v-model="selectedPlatform"
+        class="rounded-lg bg-white/5 px-4 py-2 text-sm outline-none ring-1 ring-white/10 focus:ring-indigo-500"
+      >
+        <option value="">Toutes les plateformes</option>
+        <option v-for="platform in platforms" :key="platform" :value="platform">{{ platform }}</option>
+      </select>
       <button
         :disabled="scanning"
         class="whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
