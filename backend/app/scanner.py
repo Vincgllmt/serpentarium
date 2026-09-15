@@ -1,13 +1,28 @@
 import re
+import shutil
 import zipfile
 import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
 import py7zr
+import rarfile
 
 from .config import settings
 from .db import get_connection
+
+# rarfile ne fait qu'un wrapper autour d'un outil externe (pas d'implementation
+# Python pure comme zipfile/py7zr) : il faut unrar/unar/7z installe sur la
+# machine. On elargit un peu la recherche au cas ou WinRAR est installe sans
+# etre sur le PATH.
+if shutil.which("unrar") is None:
+    for candidate in (
+        r"C:\Program Files\WinRAR\UnRAR.exe",
+        r"C:\Program Files (x86)\WinRAR\UnRAR.exe",
+    ):
+        if Path(candidate).exists():
+            rarfile.UNRAR_TOOL = candidate
+            break
 
 # Extensions de ROMs reconnues -> plateforme. A completer selon ta collection.
 ROM_EXTENSIONS = {
@@ -34,9 +49,13 @@ ROM_EXTENSIONS = {
     ".iso": "Disque (ISO)",
 }
 
-ARCHIVE_EXTENSIONS = {".zip", ".7z"}
+ARCHIVE_EXTENSIONS = {".zip", ".7z", ".rar"}
 CHUNK_SIZE = 1024 * 1024
 CLEANUP_PATTERN = re.compile(r"[\(\[][^\)\]]*[\)\]]")
+
+
+class MissingToolError(RuntimeError):
+    """Un outil externe requis (unrar, ...) est absent de la machine."""
 
 
 @dataclass
@@ -106,14 +125,41 @@ def _rom_in_7z(path: Path) -> RomEntry | None:
     return _best_rom_candidate(candidates)
 
 
+def _rom_in_rar(path: Path) -> RomEntry | None:
+    candidates = []
+    with rarfile.RarFile(path) as archive:
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+            platform = ROM_EXTENSIONS.get(Path(info.filename).suffix.lower())
+            if platform is None:
+                continue
+            candidates.append(
+                RomEntry(
+                    name=Path(info.filename).name,
+                    size=info.file_size,
+                    crc32=format(info.CRC & 0xFFFFFFFF, "08x"),
+                    platform=platform,
+                )
+            )
+    return _best_rom_candidate(candidates)
+
+
 def _identify(path: Path) -> RomEntry | None:
     ext = path.suffix.lower()
     if ext in ARCHIVE_EXTENSIONS:
         try:
             if ext == ".zip":
                 return _rom_in_zip(path)
+            if ext == ".rar":
+                return _rom_in_rar(path)
             return _rom_in_7z(path)
-        except (zipfile.BadZipFile, py7zr.exceptions.Bad7zFile):
+        except rarfile.RarCannotExec as exc:
+            raise MissingToolError(
+                "Impossible d'extraire les .rar : aucun outil unrar/WinRAR trouve. "
+                "Installe WinRAR (https://www.win-rar.com/) ou unrar, puis reessaie."
+            ) from exc
+        except (zipfile.BadZipFile, py7zr.exceptions.Bad7zFile, rarfile.Error):
             return None
 
     platform = ROM_EXTENSIONS.get(ext)
@@ -150,7 +196,11 @@ def scan_roms() -> dict:
                 continue
 
             relpath = str(relative)
-            title = clean_title(rom.name)
+            # Certaines archives (surtout .rar) stockent le nom interne dans un
+            # encodage corrompu (chars de remplacement irrecuperables) alors que
+            # le nom du fichier sur le disque, lui, est toujours correct.
+            display_name = path.name if "�" in rom.name else rom.name
+            title = clean_title(display_name)
 
             existing = conn.execute(
                 "SELECT id, crc32 FROM games WHERE relpath = ?", (relpath,)
@@ -162,13 +212,13 @@ def scan_roms() -> dict:
                     INSERT INTO games (title, platform, filename, relpath, size, crc32)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (title, rom.platform, rom.name, relpath, rom.size, rom.crc32),
+                    (title, rom.platform, display_name, relpath, rom.size, rom.crc32),
                 )
                 added += 1
             elif existing["crc32"] != rom.crc32:
                 conn.execute(
                     "UPDATE games SET size = ?, crc32 = ?, filename = ?, platform = ? WHERE id = ?",
-                    (rom.size, rom.crc32, rom.name, rom.platform, existing["id"]),
+                    (rom.size, rom.crc32, display_name, rom.platform, existing["id"]),
                 )
                 updated += 1
 

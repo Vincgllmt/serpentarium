@@ -10,7 +10,7 @@ from ..db import get_connection
 from ..igdb import IgdbError, search_game
 from ..media_cache import cache_cover
 from ..schemas import GameOut, ScanResult
-from ..scanner import scan_roms
+from ..scanner import MissingToolError, scan_roms
 from ..screenscraper import ScreenScraperError, ScreenScraperQuotaError, fetch_game_info, resolve_systeme_id
 
 router = APIRouter(prefix="/api")
@@ -114,7 +114,7 @@ def download_game(game_id: int):
 def scan():
     try:
         return scan_roms()
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, MissingToolError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
