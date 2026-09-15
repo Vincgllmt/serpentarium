@@ -9,3 +9,11 @@ export interface Game {
   year: number | null
   source: string | null
 }
+
+// Plusieurs fichiers (base / mise a jour / DLC d'un meme jeu Switch, par
+// exemple) regroupes sous une seule tuile dans la bibliotheque.
+export interface GameGroup {
+  key: string
+  primary: Game
+  variants: Game[]
+}

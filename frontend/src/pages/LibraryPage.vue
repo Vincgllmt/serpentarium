@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import GameCard from '../components/GameCard.vue'
 import { API_URL } from '../config'
 import type { Game } from '../types/game'
+import { groupGames } from '../utils/grouping'
 
 const games = ref<Game[]>([])
 const query = ref('')
@@ -70,6 +71,8 @@ const filteredGames = computed(() =>
     .filter((game) => game.title.toLowerCase().includes(query.value.toLowerCase()))
     .filter((game) => !selectedPlatform.value || game.platform === selectedPlatform.value),
 )
+
+const gameGroups = computed(() => groupGames(filteredGames.value))
 </script>
 
 <template>
@@ -115,10 +118,10 @@ const filteredGames = computed(() =>
       {{ error }}
     </p>
     <p v-else-if="loading" class="mb-6 text-sm text-zinc-400">Chargement...</p>
-    <p v-else class="mb-6 text-sm text-zinc-400">{{ filteredGames.length }} jeu(x)</p>
+    <p v-else class="mb-6 text-sm text-zinc-400">{{ gameGroups.length }} jeu(x)</p>
 
-    <div class="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-      <GameCard v-for="game in filteredGames" :key="game.id" :game="game" @updated="handleGameUpdated" />
+    <div class="grid grid-cols-2 items-start gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <GameCard v-for="group in gameGroups" :key="group.key" :group="group" @updated="handleGameUpdated" />
     </div>
   </div>
 </template>
