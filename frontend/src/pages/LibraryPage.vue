@@ -54,6 +54,11 @@ async function triggerEnrich() {
   }
 }
 
+function handleGameUpdated(updated: Game) {
+  const index = games.value.findIndex((g) => g.id === updated.id)
+  if (index !== -1) games.value[index] = updated
+}
+
 onMounted(loadGames)
 
 const platforms = computed(() =>
@@ -78,10 +83,17 @@ const filteredGames = computed(() =>
       />
       <select
         v-model="selectedPlatform"
-        class="rounded-lg bg-white/5 px-4 py-2 text-sm outline-none ring-1 ring-white/10 focus:ring-indigo-500"
+        class="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-indigo-500"
       >
-        <option value="">Toutes les plateformes</option>
-        <option v-for="platform in platforms" :key="platform" :value="platform">{{ platform }}</option>
+        <option value="" class="bg-zinc-800 text-white">Toutes les plateformes</option>
+        <option
+          v-for="platform in platforms"
+          :key="platform"
+          :value="platform"
+          class="bg-zinc-800 text-white"
+        >
+          {{ platform }}
+        </option>
       </select>
       <button
         :disabled="scanning"
@@ -106,7 +118,7 @@ const filteredGames = computed(() =>
     <p v-else class="mb-6 text-sm text-zinc-400">{{ filteredGames.length }} jeu(x)</p>
 
     <div class="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-      <GameCard v-for="game in filteredGames" :key="game.id" :game="game" />
+      <GameCard v-for="game in filteredGames" :key="game.id" :game="game" @updated="handleGameUpdated" />
     </div>
   </div>
 </template>
